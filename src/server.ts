@@ -10,11 +10,18 @@ import pool from './config/db';
 import { orderQueue } from './services/queue';
 import { redisSubscriber } from './config/redis';
 import { OrderRequest } from './types';
+import path from 'path';
+import fastifyStatic from '@fastify/static';
 
 const fastify = Fastify({ logger: true });
 
 fastify.register(cors, {
   origin: true
+});
+
+fastify.register(fastifyStatic, {
+  root: path.join(__dirname, '../../public'), 
+  prefix: '/', 
 });
 
 fastify.register(websocket);
