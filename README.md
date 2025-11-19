@@ -1,4 +1,4 @@
-# 🚀 Solana Order Execution Engine
+# Solana Order Execution Engine
 
 A high-concurrency backend engine designed to route and execute **Market Orders** across Solana DEXs (simulating Raydium and Meteora). Built with an event-driven architecture ensuring scalability, fault tolerance, and real-time updates.
 
