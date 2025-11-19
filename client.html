@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Execution Engine Test</title>
+    <style>
+        body { font-family: monospace; max-width: 800px; margin: 20px auto; padding: 20px; background: #f4f4f4; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #0056b3; }
+        #logs { margin-top: 20px; border: 1px solid #ddd; padding: 10px; height: 300px; overflow-y: auto; background: #1e1e1e; color: #00ff00; font-family: 'Courier New', monospace; }
+        .log-entry { margin: 5px 0; border-bottom: 1px solid #333; padding-bottom: 2px; }
+        .status-tag { font-weight: bold; color: #ffd700; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>DEX Order Executor</h2>
+        <div style="margin-bottom: 20px;">
+            <label>Token In: <input type="text" id="tokenIn" value="SOL" /></label>
+            <label>Token Out: <input type="text" id="tokenOut" value="USDC" /></label>
+            <label>Amount: <input type="number" id="amount" value="1.5" /></label>
+        </div>
+        <button onclick="placeOrder()">Place Market Order</button>
+
+        <h3>Live Execution Logs (WebSocket)</h3>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        async function placeOrder() {
+            const tokenIn = document.getElementById('tokenIn').value;
+            const tokenOut = document.getElementById('tokenOut').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const logsDiv = document.getElementById('logs');
+
+            // 1. Submit Order via HTTP POST
+            log("System", "Submitting Order...");
+            try {
+                const response = await fetch('http://localhost:3000/api/orders/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tokenIn, tokenOut, amount })
+                });
+                const data = await response.json();
+                
+                if(response.status === 201) {
+                    log("System", `Order Created: ${data.orderId}`);
+                    connectWebSocket(data.orderId);
+                } else {
+                    log("Error", "Failed to create order");
+                }
+            } catch (err) {
+                log("Error", "API Request Failed: " + err.message);
+            }
+        }
+
+        function connectWebSocket(orderId) {
+            // 2. Connect to WebSocket for updates
+            const ws = new WebSocket(`ws://localhost:3000/api/orders/ws?orderId=${orderId}`);
+            
+            ws.onopen = () => log("WebSocket", "Connected to updates stream");
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                let displayMsg = `Status: ${data.status.toUpperCase()}`;
+                
+                if(data.dex) displayMsg += ` | DEX: ${data.dex}`;
+                if(data.executionPrice) displayMsg += ` | Price: ${data.executionPrice.toFixed(4)}`;
+                if(data.txHash) displayMsg += ` | TX: ${data.txHash}`;
+                
+                log("Update", displayMsg);
+
+                if(data.status === 'confirmed' || data.status === 'failed') {
+                    ws.close();
+                    log("WebSocket", "Order finalized. Connection closed.");
+                }
+            };
+
+            ws.onerror = (error) => log("WebSocket Error", "Connection error");
+        }
+
+        function log(source, message) {
+            const logsDiv = document.getElementById('logs');
+            const time = new Date().toLocaleTimeString();
+            logsDiv.innerHTML += `<div class="log-entry">[${time}] <span class="status-tag">${source}:</span> ${message}</div>`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+    </script>
+</body>
+</html>
