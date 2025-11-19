@@ -6,6 +6,9 @@ const pool = new Pool({
   database: process.env.POSTGRES_DB || 'postgres',
   password: process.env.POSTGRES_PASSWORD || '',
   port: parseInt(process.env.POSTGRES_PORT || '5432'),
+  ssl: process.env.POSTGRES_HOST !== 'localhost' 
+    ? { rejectUnauthorized: false } 
+    : undefined
 });
 
 export const initDB = async () => {
