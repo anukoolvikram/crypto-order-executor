@@ -61,5 +61,6 @@ Instead of the Worker talking directly to the WebSocket connection, I used Redis
 ### 1. Clone & Install
 ```bash
 git clone https://github.com/anukoolvikram/crypto-order-executor
-cd order-execution-engine
+cd crypto-order-executor
 npm install
+npm run dev
